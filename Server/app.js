@@ -8,12 +8,16 @@ const exphbs  = require('express-handlebars');
 const {ensureAuthenticated} = require('./helpers/auth');
 const passport = require('passport');
 const bodyparser = require('body-parser');
+const path = require('path');
+const logger = require('morgan');
 
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const methodOverride = require('method-override');
-
 var waitingForNewHost = true;
+var ready = [];
+
+
 
 var hostId;
 var guestId;
@@ -24,36 +28,13 @@ const port = 3000;
 const users = require('./routes/users');
 require('./config/passport')(passport);
 
-app.use(express.json());
+var db = require('./config/database');
 
-//extension of method library in HTML forms
-app.use(methodOverride('_method'));
-router.use('/users', users);
 
-//gets rid of warning for Mongoose
-mongoose.Promise = global.Promise;
-
-//connect to mongodb using mongoose
-var db = new mongoose.connect("mongodb://localhost:27017/multiplayergamedata", {
-    useMongoClient:true
-})
-    .then(function () { console.log("MongoDB Connected") })
-    .catch(function (err) { console.log(err) });
-
-//Load in Models
-require('./models/users');
-var Users = mongoose.model('Users');
-require('./config/database');
-
-    app.use(express.static(__dirname + '/views'));
-    app.use(express.static(__dirname + '/scripts'));
-    
-    app.use(passport.initialize());
-    app.use(passport.session());
-    
     //Setup body-parser to read req data in html
     app.use(bodyparser.urlencoded({extended:false}));
     app.use(bodyparser.json());
+    
     
     //Setup Express Session
     app.use(session({   
@@ -62,13 +43,46 @@ require('./config/database');
         saveUninitialized:true
     }));  
 
+//     app.use(express.cookieParser());
+//   app.use(express.bodyParser());
+//   app.use(express.cookieSession()); // Express cookie session middleware 
+
+    app.use(passport.initialize());
+    app.use(passport.session());
+    
+
+app.use(express.json());
+
+//extension of method library in HTML forms
+app.use(methodOverride('_method'));
+router.use('/users', users);
+
+    app.use(express.static(__dirname + '/views'));
+    app.use(express.static(__dirname + '/scripts'));
+    
 console.log("Server Running");
 
-require('handlebars');
-require('handlebars/runtime');
+
+//gets rid of warning for Mongoose
+mongoose.Promise = global.Promise;
+
+
+//connect to mongodb using mongoose
+mongoose.connect(db.mongoURI, {
+    useMongoClient:true
+})
+    .then(function () { console.log("MongoDB Connected") })
+    .catch(function (err) { console.log(err) });
+
+//Load in Models
+require('./models/users');
+var Users = mongoose.model('Users');
 
 app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
+
+require('handlebars');
+require('handlebars/runtime');
 
 //#region Page Routes
 
@@ -78,27 +92,44 @@ router.get('/',function(req,res){
     res.render('login');
 });
 
+router.get('/topten', ensureAuthenticated, function(req,res){
+    console.log("Directing To Login Page");
+    res.render('topTenPlayers');
+});
 
+router.get('/updateinfo', ensureAuthenticated, function(req,res){
+    console.log("Directing To Login Page");
+    res.render('topTenPlayers');
+});
 
+//Route to new user page
+router.get('/newuser',function(req,res){
+    res.render('newuser');
+});
+
+//*********************************** */
+//WHERE THE TOP TEN IS
+//*********************************** */
+app.get('/topten', function(req,res){
+
+    Users.find({}).limit(10).
+    then(function(users){
+        res.render('topTenPlayers', {user:users});    
+    })
+});
 //#endregion
 
 //#region Action Routes
 
 router.post('/log',function(req,res,next){
     passport.authenticate('local', {
-        successRedirect:'/defectspage',
+        successRedirect:'/topten',
         failureRedirect:'/'
     })(req,res,next);
 });
 
 //#endregion
 
-app.use('/', router);
-
-//Start server
-app.listen(port, function(){
-    console.log("Server is running on port " + port);
-});
 
 //#region Socket.IO
 var players = [];
@@ -106,6 +137,9 @@ var players = [];
 io.on('connection',function(socket)
 {
     var playerNumber = 0;
+
+    var loggedUser;
+
     console.log("Connected to Unity");
     socket.emit('connected');
     var thisPlayerId = shortid.generate();
@@ -127,8 +161,9 @@ io.on('connection',function(socket)
             v:0,
             h:horizontalPos
         },
+        ready:false,
         score:0,
-        wins:0
+        wins:5
     }
 
     players[thisPlayerId] = player;
@@ -149,8 +184,15 @@ io.on('connection',function(socket)
     }else{
         socket.emit('setNetworkPlayerPosition', {id:thisPlayerId })
         socket.emit('spawnNetworkBall');
-        socket.emit('initialize');
     };
+
+    socket.on('checkReady', function(){
+        players[thisPlayerId].ready = true;
+
+        if(players[hostId] !=null && players[guestId] !=null)
+        if(players[hostId].ready == true && players[guestId].ready == true)
+        io.emit('startGame');
+    })
 
 //#region  Handshake Notification
     socket.on('sayhello', function(data){
@@ -167,10 +209,29 @@ io.on('connection',function(socket)
     });
 
     socket.on('resetRound', function(){
-        // io.emit('stopGame');
-        // io.emit('resetPlayerPosition');
+        io.emit('resetPlayerPosition');
         io.emit('startGame');
     })
+
+    socket.on('score', function(data){
+        if(data.h > 0){
+            player[hostid]+=1;
+            io.emit('playerScored', hostid)
+            
+
+        }else{
+            player[guestId]+= 1;
+            io.emit('playerScored', guestId);
+        }
+
+        socket.emit('resetHostBall');
+        io.emit('resetPlayerPosition');
+
+    })
+
+    // socket.on('stopGame',function(){
+    //     io.emit('stopGame');
+    // });
 
 //#endregion
 
@@ -188,27 +249,26 @@ io.on('connection',function(socket)
 
         console.log(data.v);
 
+        // if(players[guestId] != null && 
+        //     data.v > players[guestId].position.h + 3)
+        // {        
+        //     io.emit("stopGame");
+        //     io.emit('resetPlayerPosition');
+        //     io.emit('resetHostBall');
+        //     players[hostId].score++;
+        //     console.log("Player: " + hostId + " scored!");
+        //     io.emit('playerScored', {id:hostId});
+        // }
+        // else if(players[hostId] != null && 
+        //     data.v < players[hostId].position.h - 3)
+        // {
+        //     io.emit("stopGame");
+        //     io.emit('resetPlayerPosition');
+        //     io.emit('resetHostBall');
 
-        if(players[guestId] != null && 
-            data.v > players[guestId].position.h + 3)
-        {        
-            io.emit("stopGame");
-            io.emit('resetPlayerPosition');
-            io.emit('resetHostBall');
-            players[hostId].score++;
-            console.log("Player: " + hostId + " scored!");
-            io.emit('playerScored', {id:hostId});
-        }
-        else if(players[hostId] != null && 
-            data.v < players[hostId].position.h - 3)
-        {
-            io.emit("stopGame");
-            io.emit('resetPlayerPosition');
-            io.emit('resetHostBall');
-
-            io.emit("playerScored", {id:guestId});
-            console.log("Player: " + guestId + " scored!");
-        }
+        //     io.emit("playerScored", {id:guestId});
+        //     console.log("Player: " + guestId + " scored!");
+        // }
     });
 
     socket.on('updatePosition', function(data){
@@ -228,19 +288,50 @@ io.on('connection',function(socket)
 //#region Add Users to Database
     socket.on('senddata', function(data){
         console.log(JSON.stringify(data));
-        var newUser = {
-            name:data.name,
-        }
-        new Users(newUser)
-        .save()
-        .then(function(users){
-            console.log("Sending Data to Database");
-            Users.find({})
-            .then(function(users){
-                console.log(users);
-                socket.emit('hideform', {users});
-            });
-        });
+
+
+        // var exists = Users.find({name:user.name, password:user.password}).limit(1);
+
+        // console.log(exists);
+        // Users.find({name:user.name, password:user.password}).limit(1)
+        // .then(function(users){
+
+        //     console.log("Sending Data to Database");
+        //     Users.find({})
+        //     .then(function(users){
+        //         // console.log(users);
+        //         socket.emit('hideform', {users});
+        //     });
+        // });
+        // // }else{
+            var user;
+            bcrypt.genSalt(10,function(err, salt){
+                bcrypt.hash(data.password, salt, function(err,hash){
+                    if(err)throw err;
+                    user = new Users ({
+                        name:data.name,
+                        password:hash,
+                        wins: 0,
+                        gamesplayed:0
+                    });
+                    // user.password = hash;
+                    console.log(hash);
+                    console.log(user.password);
+
+                    user.save()
+                    .then(function(users){
+                        console.log("Sending Data to Database");
+                        Users.find({})
+                        .then(function(users){
+                            console.log(users);
+                            socket.emit('hideform', {users});
+                        });
+                    });
+                });
+                Users.find({}).sort({ wins: -1 });
+            })
+
+        // }
     });
 
     //#endregion
@@ -263,4 +354,11 @@ io.on('connection',function(socket)
 
 //#endregion
 });
+app.use('/', router);
+
+//Start server
+app.listen(port, function(){
+    console.log("Server is running on port " + port);
+});
+
 //#endregion

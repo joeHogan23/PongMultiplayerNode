@@ -18,11 +18,25 @@ public class BallMovement : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-        moveDirection = new Vector2(1, 0);
-            //UnityEngine.Random.Range(1, -1), UnityEngine.Random.Range(1, -1));
+        ResetBall();
+        //UnityEngine.Random.Range(1, -1), UnityEngine.Random.Range(1, -1));
 	}
     // Update is called once per frame
     void FixedUpdate () {
+
+        if (transform.position.x > 8)
+        {
+            Network.socket.Emit("resetRound");
+            Network.socket.Emit("score", new JSONObject(Network.VectorToJson(0, -1)));
+            Network.socket.Emit("resetRound");
+        }
+
+        if (transform.position.x < -8)
+        {
+            transform.position = Vector2.zero;
+            Network.socket.Emit("score", new JSONObject(Network.VectorToJson(0, -1)));
+            Network.socket.Emit("resetRound");
+        }
 
         speed += .0001f;
 
@@ -49,7 +63,7 @@ public class BallMovement : MonoBehaviour {
         moveDirection = Vector2.Reflect(moveDirection, normalized);
     }
 
-    internal static void OnResetBall(SocketIOEvent obj)
+    internal static void ResetBall()
     {
         moveDirection = new Vector2(
             UnityEngine.Random.Range(1, -1), UnityEngine.Random.Range(1, -1));

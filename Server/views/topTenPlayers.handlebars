@@ -1,0 +1,12 @@
+<div class="jumbotron">
+    <h1 class="text-center">Top Ten Players!</h1>
+    <br><br>
+    {{#each user}}
+        <div class='entries'>
+            <p class="font-weight-bold">UserName: {{name}} ---- Wins: {{wins}} ---- Games Played: {{gamesplayed}}</p>
+        </div>
+        <br>
+    {{else}}
+    <p>No Players Registered</p>
+    {{/each}}
+</div>

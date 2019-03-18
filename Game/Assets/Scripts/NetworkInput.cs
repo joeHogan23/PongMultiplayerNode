@@ -8,10 +8,16 @@ using System;
 public class NetworkInput : MonoBehaviour {
     public static SocketIOComponent socket;
     string userName;
-    public InputField nameInput;
-    public GameObject inputForm;
-    public GameObject userList;
-    public Text listText;
+    string password;
+
+    [SerializeField] InputField nameInput;
+    [SerializeField] InputField passwordInput;
+
+    [SerializeField] GameObject inputForm;
+    [SerializeField] GameObject userList;
+
+
+    [SerializeField] Text listText;
 
 
 
@@ -27,11 +33,17 @@ public class NetworkInput : MonoBehaviour {
     {
         inputForm.SetActive(false);
         userList.SetActive(true);
-        Debug.Log(obj.data["users"].list);
+
+        int i = 0;
 
         foreach (JSONObject name in obj.data["users"].list)
         {
-            listText.text += name["name"].str + "\n";
+            if (i > 9)
+                break;
+            listText.text +=  (i + 1).ToString() + " UserName: " + name["name"] +
+                "      Wins: "+  name["wins"] + 
+                "      Games Played: " + name["gamesplayed"] + "\n";
+            i++;
         }
     }
 
@@ -40,13 +52,17 @@ public class NetworkInput : MonoBehaviour {
         Debug.Log("We are connected to the server");
     }
 
-   
-    public void GrabFormData () {
+
+    public void GrabFormData() {
         userName = nameInput.text;
-        Debug.Log(userName);
+        password = passwordInput.text;
+
         JSONObject data = new JSONObject(JSONObject.Type.OBJECT);
         data.AddField("name", userName);
+        data.AddField("password", password);
+        //data.AddField("password", password);
+
         //Add other fields here 
         socket.Emit("senddata", data);
-	}
+    }
 }

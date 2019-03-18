@@ -1,6 +1,6 @@
 WindowsStandalone
 PlayerPath?
-C:/Users/Joe_Hogan/Downloads/MultiPlayerGame-master/MultiPlayerGame-master/Build/MultiPlayerGame.exe
+C:/Users/Joe_Hogan/Desktop/SierejkoPongMultiplayer_WebApi/Game/Build/MultiPlayerGame.exe
 SceneListBegin?
 Assets/gamescene.unity
 SceneListEnd?
@@ -173,6 +173,7 @@ aac9c55ae7ba4b95b852a7d9c191acd1 Unity.TextMeshPro.dll:TMPro.TextMeshProUGUI
 e04611b8715e6833d2bd7010fc6be10b Unity.TextMeshPro.dll:TMPro.TMP_StyleSheet
 2f9af06a78208a67db480e9bfed4a076 Unity.TextMeshPro.dll:TMPro.TextMeshPro
 9318334b30e9f195f573b2ce00154b95 Unity.TextMeshPro.dll:TMPro.TMP_ColorGradient
-cbd69adf556db15dd3b57d0e810abb4f Assembly-CSharp.dll:.NetworkInput
+87b889b8509f731679aa3aa80e879b4e Assembly-CSharp.dll:.NetworkInput
 93307bd34e39d73fd24e00ec39c25a91 Unity.TextMeshPro.dll:TMPro.TMP_SubMesh
 486cd95c82d8305219c352c06b776e1f Assembly-CSharp.dll:.TestSocketIO
+456c6b1907532e924f56dda3bb36af7c Assembly-CSharp.dll:.SceneManager

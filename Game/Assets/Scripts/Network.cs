@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using SocketIO;
 using System;
+using UnityEngine.SceneManagement;
 
 public class Network : MonoBehaviour {
     public static SocketIOComponent socket;
@@ -36,14 +37,14 @@ public class Network : MonoBehaviour {
         socket.On("spawnNetworkBall", OnSpawnNetworkBall);
         socket.On("moveNetworkBall", BallMovementNetwork.OnMoveNetworkBall);
 
-        socket.On("resetHostBall", BallMovement.OnResetBall);
+        //socket.On("resetHostBall", BallMovement.OnResetBall);
 
         socket.On("startGame", OnStartGame);
         socket.On("stopGame", OnStopGame);
 
         socket.On("resetPlayerPosition", OnResetPlayers);
         socket.On("initialize", OnInitialize);
-        socket.On("resetBall", BallMovement.OnResetBall);
+        //socket.On("resetBall", BallMovement.OnResetBall);
 
 
         socket.On("playerScored", OnPlayerScored);
@@ -77,6 +78,7 @@ public class Network : MonoBehaviour {
     void OnResetPlayers(SocketIOEvent obj)
     {
         foreach (KeyValuePair<string, GameObject> player in Spawner.players)
+
             player.Value.transform.position = new Vector2(player.Value.transform.position.x, 0);
     }
 
@@ -87,6 +89,7 @@ public class Network : MonoBehaviour {
         {
             socket.Emit("gameWon",obj.data);
         }
+
     }
 
     private static void GameWon(string str)
@@ -157,7 +160,6 @@ public class Network : MonoBehaviour {
     {
         Debug.Log("Regisetered Player " + obj.data["id"].str);
         Spawner.AddPlayer(obj.data["id"].ToString(), Spawner.localPlayer);
-
     }
 
     private void OnDisconnected(SocketIOEvent obj)
@@ -236,5 +238,4 @@ public class Network : MonoBehaviour {
     {
 
     }
-
 }
